@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Blocks any commit that leaks secrets, private identifiers or strategy residue.
+exec scripts/hygiene_check.sh

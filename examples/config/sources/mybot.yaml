@@ -1,0 +1,13 @@
+# A source: a system allowed to send signals to POST /v1/signals.
+# Copy to config/sources/mybot.yaml. The secret is NEVER in this file: put it in the environment
+# variable named below (at least 32 random characters; the relay's environment: with Docker, .env; without it, export it in the shell),
+# e.g. one generated with:
+#   python -c "import secrets; print(secrets.token_hex(32))"
+# Every relay needs its own secret. Check with: relay check-config
+# Send a dry-run test signal with: relay test-signal --source mybot --symbol BTCUSDT --side long --notional <USDT> --stop-pct <PERCENT>
+
+auth: hmac
+secret_env: RELAY_SOURCE_MYBOT_SECRET
+deployments: [main]          # the deployment(s) this source may reach
+enabled: true
+max_signals_per_minute:      # Empty = no limit.

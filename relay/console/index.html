@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quanti Relay</title>
+<link rel="stylesheet" href="/console/style.css">
+<script src="/console/app.js" defer></script>
+</head>
+<body>
+<header>
+  <h1>Quanti Relay</h1>
+  <div id="status" class="status" aria-live="polite"></div>
+</header>
+
+<section id="login" class="card">
+  <h2>Sign in</h2>
+  <p>Enter the relay's API key (<code>RELAY_API_KEY</code>, or the read-only <code>RELAY_API_READONLY_KEY</code>
+     to look without acting). It stays in this browser tab only.</p>
+  <form id="login-form">
+    <label for="key">API key</label>
+    <input id="key" type="password" autocomplete="off" spellcheck="false" required>
+    <button type="submit">Open the console</button>
+  </form>
+  <p id="login-error" class="error" role="alert"></p>
+</section>
+
+<main id="console" hidden>
+  <nav role="tablist">
+    <button role="tab" data-tab="home" aria-selected="true">Home</button>
+    <button role="tab" data-tab="setup">Setup</button>
+    <button role="tab" data-tab="connect">Connect</button>
+    <button role="tab" data-tab="positions">Positions</button>
+    <button role="tab" data-tab="signals">Signals</button>
+    <button role="tab" data-tab="events">Events</button>
+    <button role="tab" data-tab="stop" class="danger-tab">Stop</button>
+    <button id="logout" class="quiet">Sign out</button>
+  </nav>
+
+  <div id="restart-banner" class="card banner" hidden>
+    <span>Saved. The relay reads its files when it starts: restart it to apply the change (a change in .env needs relay restart on the server).</span>
+    <button id="restart" type="button">Restart now</button>
+  </div>
+
+  <section id="tab-home" class="card" role="tabpanel">
+    <h2>Where things stand</h2>
+    <div id="home"></div>
+  </section>
+
+  <section id="tab-setup" role="tabpanel" hidden>
+    <div id="setup-note" class="card note" hidden></div>
+    <section class="card">
+      <h2>1. Exchange</h2>
+      <p>Where the relay trades. It starts on paper: prices are read, no order is sent.</p>
+      <div id="setup-venue"></div>
+    </section>
+    <section class="card">
+      <h2>2. Limits</h2>
+      <p>Your own numbers. An empty field means that rule is off: the relay presets none.</p>
+      <div id="setup-limits"></div>
+    </section>
+    <section class="card">
+      <h2>3. Signal sources</h2>
+      <p>Who may send signals. Each source has its own secret, which lives in <code>.env</code>, never here.</p>
+      <div id="setup-sources"></div>
+    </section>
+    <section class="card">
+      <h2>4. Notifications</h2>
+      <p>Where the relay tells you what happened: Telegram, Discord or a webhook.</p>
+      <div id="setup-sinks"></div>
+    </section>
+    <section class="card">
+      <h2>5. Test</h2>
+      <div id="setup-test"></div>
+    </section>
+    <section class="card">
+      <h2>6. Go live</h2>
+      <div id="setup-live"></div>
+    </section>
+  </section>
+
+  <section id="tab-connect" class="card" role="tabpanel" hidden>
+    <h2>Connect a sender</h2>
+    <p>Copy what your tool needs. Secrets are shown as the name of their variable: fill in the value yourself.</p>
+    <div id="connect"></div>
+  </section>
+
+  <section id="tab-positions" class="card" role="tabpanel" hidden>
+    <h2>Open positions</h2>
+    <div id="positions"></div>
+  </section>
+
+  <section id="tab-signals" class="card" role="tabpanel" hidden>
+    <h2>Signal log</h2>
+    <div id="signals"></div>
+  </section>
+
+  <section id="tab-events" class="card" role="tabpanel" hidden>
+    <h2>Events</h2>
+    <div id="events"></div>
+  </section>
+
+  <section id="tab-stop" class="card" role="tabpanel" hidden>
+    <h2>Stop trading</h2>
+    <p><strong>Close all</strong> closes every position of this deployment at market and leaves the relay running.</p>
+    <p><strong>Emergency stop</strong> closes every position at market, refuses new entries and stops the engine.
+       It stays in force after a restart.</p>
+    <p><strong>Resume</strong> lifts an emergency stop: new entries are taken again.</p>
+    <form id="stop-form">
+      <label for="confirm">Type the deployment's name to confirm</label>
+      <input id="confirm" autocomplete="off" spellcheck="false">
+      <div class="row">
+        <button type="submit" name="action" value="close-all" class="danger">Close all</button>
+        <button type="submit" name="action" value="emergency-stop" class="danger">Emergency stop</button>
+        <button type="submit" name="action" value="resume">Resume</button>
+      </div>
+    </form>
+    <p id="stop-result" role="alert"></p>
+  </section>
+</main>
+<footer><span id="updated"></span></footer>
+</body>
+</html>

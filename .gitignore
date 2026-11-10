@@ -1,0 +1,38 @@
+# Staging copy of the source project — never committed
+_import/
+
+# Secrets: never commit credentials of any kind
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials*.json
+
+# Runtime
+*.db
+*.db-*
+*.log
+logs/
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+.next/
+*.tsbuildinfo
+.hygiene-denylist.local
+
+# Local tooling
+.ruff_cache/
+
+# Your own deployment and source files (your numbers stay yours; secrets are never in them anyway).
+# Templates: examples/config/
+/config/

@@ -1,0 +1,83 @@
+# docker compose up -d     -> the relay on http://127.0.0.1:8080 (console: /console), paper trading.
+#
+# Before the first start:
+#   cp .env.example .env     and set RELAY_API_KEY in it (and nothing you would not want in a file)
+#   mkdir -p config/deployments config/sources   and put your deployment and source files there
+#                                                  (examples/config/ has commented examples)
+# On a server reachable from the internet: deploy/install.sh (docs/cloud.md), which adds the TLS
+# proxy below:   docker compose --profile tls up -d
+# With Postgres instead of SQLite:   docker compose --profile postgres up -d
+#   and in .env: RELAY_DATABASE_URL=postgresql+asyncpg://relay:<password>@postgres/relay
+#                POSTGRES_PASSWORD=<the same password>
+services:
+  relay:
+    build: .
+    image: quanti-relay:local
+    restart: unless-stopped
+    # On stop the relay finishes entries in flight (an order and its stop) and sends what is queued:
+    # up to about 40 s. Docker's default of 10 s could cut an entry between its fill and its stop.
+    stop_grace_period: 60s
+    ports:
+      - "127.0.0.1:8080:8080"     # this machine only; put a TLS proxy in front to reach it from elsewhere
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      RELAY_ENV: production
+    volumes:
+      # Deployment, source and sink files. Writable, so the console can set them up (it keeps each
+      # replaced version in config/.history/). Add :ro to the line below to allow hand edits only.
+      - ./config:/config
+      - relay-data:/data          # the SQLite database
+
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_DB: relay
+      # From .env (compose reads it for ${...}); empty = the image refuses to start. Only this one
+      # value reaches the database container, none of the relay's keys.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  caddy:
+    # The TLS proxy (deploy/Caddyfile): HTTPS on 443 with a certificate it renews by itself, for
+    # RELAY_PUBLIC_HOST from .env (the server's IP address, or your own domain).
+    profiles: ["tls"]
+    image: caddy:2.11.6-alpine@sha256:d44355d3c2149dc580ce2cac735955d1c08d3d00882c30489c241aa51a5c10d9
+    restart: unless-stopped
+    depends_on: [relay]
+    ports:
+      - "80:80"                   # the certificate's challenge, and a redirect to https
+      - "443:443"
+    environment:
+      # Only these two values reach the proxy, none of the relay's keys.
+      RELAY_HOST: ${RELAY_PUBLIC_HOST:-}
+      RELAY_ACME_PROFILE: ${RELAY_ACME_PROFILE:-classic}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data          # the certificates
+      - caddy-config:/config
+    networks:
+      default:
+        # A fixed address: the relay trusts the forwarded client address from this one alone
+        # (RELAY_TRUSTED_PROXIES=172.30.77.10, set by deploy/install.sh), not from Docker's
+        # gateway, through which local programs reach the relay's port.
+        ipv4_address: 172.30.77.10
+
+# One network with a fixed range, so the proxy's address above is always the same.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.77.0/24
+          ip_range: 172.30.77.128/25    # the other containers' addresses: never the proxy's
+
+volumes:
+  relay-data:
+  postgres-data:
+  caddy-data:
+  caddy-config:

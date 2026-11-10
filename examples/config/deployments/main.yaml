@@ -1,0 +1,54 @@
+# One deployment: its trading settings and risk rails.
+# Copy to config/deployments/main.yaml (one deployment file is supported so far) and fill in YOUR
+# numbers. The relay ships none: every setting left empty is off.
+# Check it with:  relay check-config
+
+enabled: true            # false = no new entries; closes, stops and the emergency stop still work
+dry_run: true            # paper trading. Live needs this AND RELAY_DRY_RUN set to false - by you.
+
+leverage:                # <MULTIPLE>. Empty = the account's own leverage is used and never changed.
+isolated_margin:         # true = isolated, false = cross. Empty = the account's mode is never touched.
+require_stop: true       # every entry needs a stop
+
+risk:
+  max_positions:         # open positions at once
+  max_exposure_pct:      # open position value as % of available balance
+  daily_loss_limit_pct:  # stop new entries after this realised loss today (% of balance)
+  min_balance:           # no new entries below this balance (USDT)
+  cooldown_hours:        # wait after closing a symbol before entering it again
+  min_stop_distance_pct: # refuse stops closer than this to the entry
+  max_stop_distance_pct: # refuse stops further than this from the entry
+  max_size_shortfall_pct: # refuse when the venue's lot rules shrink an order by more than this
+
+position_management:     # defaults for orders that send none of their own
+  take_profit_pct:       # one take-profit, % from the entry (or a ladder below, not both)
+  take_profit_ladder:    # e.g. [{pct: <PERCENT>, close_pct: <PERCENT>}, {pct: <PERCENT>, close_pct: <PERCENT>}]
+  trailing_distance_pct: # trailing stop distance, % of the price
+  trailing_activate_pct: # start trailing once this % in profit (empty = at once)
+  break_even_trigger_pct: # move the stop to entry once this % in profit ...
+  break_even_trigger_r:  # ... or once this multiple of the initial risk ...
+  break_even_trigger_tp: # ... or once this take-profit level has filled (1 = the first)
+  break_even_buffer_pct: # the stop goes this % past the entry, on the profit side
+  max_hold_hours:        # the time stop, for every position: close it at market once open this many hours
+
+rails:
+  symbols:
+    allow: []            # e.g. [BTC/USDT:USDT, ETHUSDT]. Empty = every symbol.
+    deny: []
+  max_notional_usd:      # one position's value, USD
+  max_notional_pct:      # one position's value, % of account equity
+  max_gross_leverage:    # all open positions' value plus the new order, as a multiple of equity
+  on_limit: clip         # clip = shrink an order to fit; reject = refuse it
+  trading_hours:         # e.g. {days: [mon, tue, wed, thu, fri], start: "<HH:MM>", end: "<HH:MM>", timezone: UTC}
+  stop_before_bankruptcy: true   # isolated margin + leverage: refuse a stop the margin runs out before
+
+target:                  # target signals (a whole book of weights)
+  neutralize: false      # true = trim the larger side so long value == short value
+  min_change_pct:        # hold a same-side change smaller than this % of equity. Empty = trade any change.
+
+venue:                   # where it trades (docs/venues.md)
+  exchange: bybit        # bybit (native) or a CCXT exchange id: binance, okx, bitget, gate, ...
+  environment:           # bybit: leave empty (RELAY_BYBIT_DEMO / RELAY_TESTNET decide).
+                         # Any other exchange: demo or testnet to try it; live is yours to choose.
+  market:                # empty = perpetual futures; spot = buy coins with USDT (long only, no leverage)
+  dedicated_account:     # spot only, required there: true = this account holds only the relay's coins

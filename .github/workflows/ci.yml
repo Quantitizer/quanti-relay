@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c
+        env:
+          POSTGRES_USER: relay
+          POSTGRES_PASSWORD: relaytest
+          POSTGRES_DB: relay_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U relay" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5.4.2
+        with:
+          version: "0.5.11"
+      - run: uv sync --frozen --extra postgres
+      - run: uv run ruff check relay tests
+      - name: tests (SQLite)
+        run: uv run pytest -q
+      - name: tests (Postgres)
+        run: uv run pytest -q
+        env:
+          RELAY_TEST_DATABASE_URL: postgresql+asyncpg://relay:relaytest@127.0.0.1:5432/relay_test
+
+  hygiene:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: install gitleaks
+        run: |
+          curl -sSfLo gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz
+          echo "5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+      - name: leak and residue check (every tracked file)
+        run: scripts/hygiene_check.sh --release
+        env:
+          CI: "true"
+
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - run: docker build -t quanti-relay:ci .
+      - name: the container starts on paper and serves its health and console
+        run: |
+          docker run -d --name relay -p 127.0.0.1:8080:8080 -e RELAY_API_KEY=ci-only-not-a-secret-0123456789abcdef -e RELAY_ENV=production quanti-relay:ci
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8080/health && break; sleep 1; done
+          curl -sf http://127.0.0.1:8080/console > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/status)" = 401
+          docker logs relay

@@ -1,0 +1,13 @@
+# Telegram: the relay's events as messages to you (notifications only - it reads nothing back).
+# 1. In Telegram, talk to @BotFather: /newbot, pick a name. It gives you the bot's TOKEN.
+# 2. Send your new bot any message, then open https://api.telegram.org/bot<TOKEN>/getUpdates in a
+#    browser: your CHAT ID is the number at "chat":{"id": ...}.
+# 3. Put both in the environment variables below (the relay's environment: with Docker, .env; without it, export it in the shell).
+# 4. Copy this file to config/sinks/telegram.yaml and check with: relay check-config
+
+type: telegram
+bot_token_env: RELAY_TELEGRAM_BOT_TOKEN
+chat_id_env: RELAY_TELEGRAM_CHAT_ID
+enabled: true
+min_severity: info        # info = everything; warning = problems only; critical = emergencies only
+kinds: []                 # [] = every kind; e.g. [position., signal.failed, relay.halted]

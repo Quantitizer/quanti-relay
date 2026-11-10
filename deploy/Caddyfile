@@ -1,0 +1,37 @@
+# The TLS proxy in front of the relay (docker compose --profile tls). It gets a certificate for
+# RELAY_HOST from Let's Encrypt and renews it by itself:
+#   an IP address  -> a short-lived IP certificate (profile shortlived, renewed every few days)
+#   a domain name  -> a normal certificate (profile classic)
+# deploy/install.sh writes them into .env (RELAY_PUBLIC_HOST, which compose passes in as RELAY_HOST).
+{
+	# A client that connects to an IP address sends no server name: it gets RELAY_HOST's certificate
+	# (without this Caddy would look for one for its own container address, and find none).
+	default_sni {$RELAY_HOST}
+	servers {
+		# Slow senders cannot hold connections open: a request must arrive in time.
+		timeouts {
+			read_header 10s
+			read_body 30s
+			idle 2m
+		}
+	}
+}
+
+{$RELAY_HOST} {
+	tls {
+		issuer acme {
+			profile {$RELAY_ACME_PROFILE:classic}
+		}
+	}
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	# Caddy appends the client's address to X-Forwarded-For; the relay trusts it from Caddy's own
+	# fixed address only (RELAY_TRUSTED_PROXIES, compose.yaml). The body is read whole here first,
+	# so the relay never waits on a slow sender.
+	reverse_proxy relay:8080 {
+		request_buffers 1MiB
+	}
+}

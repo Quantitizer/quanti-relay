@@ -1,0 +1,10 @@
+# Discord: the relay's events posted to a channel (notifications only).
+# 1. In Discord: channel settings -> Integrations -> Webhooks -> New Webhook -> Copy Webhook URL.
+# 2. Put the URL in the environment variable below (the relay's environment: with Docker, .env; without it, export it in the shell).
+# 3. Copy this file to config/sinks/discord.yaml and check with: relay check-config
+
+type: discord
+webhook_url_env: RELAY_DISCORD_WEBHOOK_URL
+enabled: true
+min_severity: warning     # info = everything; warning = problems only; critical = emergencies only
+kinds: []                 # [] = every kind; e.g. [position., relay.halted]

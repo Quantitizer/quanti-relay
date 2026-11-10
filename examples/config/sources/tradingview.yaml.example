@@ -1,0 +1,34 @@
+# TradingView alerts. TradingView cannot sign a request, so this source proves itself differently:
+# the alert's JSON carries a passphrase, and it must come from one of TradingView's addresses.
+#
+# 1. Copy to config/sources/tradingview.yaml (drop the .example).
+# 2. allow_ips: fill in the addresses TradingView sends webhooks from, exactly as TradingView
+#    publishes them on its help page "About webhooks" (they are not copied here: they change, and
+#    a stale list would let the wrong senders in or keep TradingView out). Without them the relay
+#    refuses to start.
+# 3. Put a passphrase of at least 32 random characters in the environment variable below (the .env
+#    file feeds it only under Docker), e.g.:  python -c "import secrets; print(secrets.token_hex(24))"
+# 4. In the TradingView alert, set the webhook URL to https://<your relay>/v1/signals and a message
+#    like this (one line in TradingView; {{...}} are TradingView's placeholders):
+#      {"version": "1", "id": "{{ticker}}-{{timenow}}-open", "source": "tradingview", "deployment": "main",
+#       "sent_at": "{{timenow}}", "kind": "event", "action": "open", "symbol": "{{ticker}}",
+#       "side": "long", "size": {"notional_usd": <USDT>}, "stop": {"pct": <PERCENT>},
+#       "passphrase": "<the passphrase>"}
+#    The passphrase is removed before the signal is read or stored.
+#    The id must be different for every signal: the same id with a different signal is refused
+#    (409). Give each alert its own ending (-open, -close, ...); in a strategy's alerts,
+#    {{strategy.order.id}}-{{timenow}} is unique per order.
+# Check with: relay check-config
+
+auth: passphrase
+secret_env: RELAY_TRADINGVIEW_PASSPHRASE
+allow_ips: []                # REQUIRED - see step 2
+# Behind deploy/install.sh's TLS proxy nothing more is needed here: the relay's own
+# RELAY_TRUSTED_PROXIES tells it the sender's real address. Only for another proxy of your own:
+client_ip_header:            # the header that proxy puts the client's address in
+trusted_proxies: []          # with client_ip_header: that proxy's address(es) as the relay sees them
+                             # (under Docker that is the Docker network's gateway, not this machine's
+                             # loopback address: check `docker network inspect`)
+deployments: [main]
+enabled: true
+max_signals_per_minute:      # Empty = no limit.

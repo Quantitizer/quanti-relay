@@ -1,0 +1,13 @@
+# Webhook-out: every event POSTed as JSON to your own system:
+#   {"id", "kind", "severity", "message", "data", "position_id", "created_at"}
+# With secret_env set, each request is signed like a signal sent TO the relay:
+#   X-Relay-Signature: t=<unix>,v1=<HMAC-SHA256 hex of "<t>.<body>">  - verify it on your side.
+# The URL and the secret go in environment variables (the relay's environment: with Docker, .env; without it, export it in the shell);
+# the URL must be https. Copy to config/sinks/webhook.yaml and check with: relay check-config
+
+type: webhook
+url_env: RELAY_EVENTS_WEBHOOK_URL
+secret_env: RELAY_EVENTS_WEBHOOK_SECRET    # optional; at least 32 random characters recommended
+enabled: true
+min_severity: info
+kinds: []

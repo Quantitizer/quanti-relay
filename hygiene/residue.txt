@@ -1,0 +1,43 @@
+# Strategy / signal-generation residue that must not survive the carve (the carve of the predecessor project).
+# One case-insensitive extended regex per line. Generic words only — nothing project-specific.
+kpsar
+\bpsar\b
+parabolic
+tri[_-]?sleeve
+tri_(actuator|run|shadow|engine)
+xs_ensemble
+xs_universe
+xs_leg
+indicator_calc
+indicators?_calculat
+signal_evaluator
+screener
+ohlcv
+kline
+cold_start
+data_warming
+datasource
+goplus
+honeypot
+decay_monitor
+fractal
+triple_screen
+atr_fib
+bar_colou?rs?
+coingecko
+birdeye
+dexscreener
+# Research / internal-process residue (comments that leak how the strategy was built or run)
+\balpha\b
+sharpe
+backtest
+\baud-?[0-9]
+\bexp[0-9]+
+shadow
+sleeve
+xsmom
+\bblocker [a-z]?[0-9]
+\bphase [a-e]\b
+\b[BM][0-9]{1,2}\b
+deploy(ment)? ?#?[0-9]
+\(audit 

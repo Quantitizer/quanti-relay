@@ -1,0 +1,13 @@
+# Quantitiser: sends v1 target signals (kind: target - a whole book of weights), signed with HMAC.
+# Copy to config/sources/quantitiser.yaml; put a secret of at least 32 random characters in the
+# environment variable below (the relay's environment: with Docker, .env; without it, export it in the shell). Every relay needs its own.
+# A target book manages the WHOLE book of the deployment it reaches: positions left out of the
+# weights are closed. Give it a deployment that no event source trades.
+# Try one in dry-run with:
+#   relay test-signal --source quantitiser --weights BTCUSDT=<WEIGHT>,ETHUSDT=-<WEIGHT> --stop-pct <PERCENT>
+
+auth: hmac
+secret_env: RELAY_QUANTITISER_HMAC_KEY
+deployments: [main]
+enabled: true
+max_signals_per_minute:      # Empty = no limit.

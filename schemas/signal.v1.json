@@ -1,0 +1,559 @@
+{
+  "$defs": {
+    "BreakEven": {
+      "additionalProperties": false,
+      "description": "Break-even: once the position is trigger_pct % in profit, or trigger_r times its initial risk\n(entry to the opening stop), or take-profit level trigger_tp has filled, its stop moves to the\nentry price plus buffer_pct % (omitted: exactly the entry). Set one trigger. It only ever\ntightens the stop.",
+      "properties": {
+        "buffer_pct": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Buffer Pct"
+        },
+        "trigger_pct": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trigger Pct"
+        },
+        "trigger_r": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trigger R"
+        },
+        "trigger_tp": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trigger Tp"
+        }
+      },
+      "title": "BreakEven",
+      "type": "object"
+    },
+    "EventSignal": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "open",
+            "close",
+            "reduce",
+            "flip",
+            "close_all",
+            "move_stop"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "break_even": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BreakEven"
+            },
+            {
+              "const": false,
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Break Even"
+        },
+        "deployment": {
+          "description": "the deployment this signal targets",
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Deployment",
+          "type": "string"
+        },
+        "dry_run": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "true = simulate this signal (only ever more cautious)",
+          "title": "Dry Run"
+        },
+        "execution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Execution"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "description": "sender-unique; a repeat is never executed twice",
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "event",
+          "title": "Kind",
+          "type": "string"
+        },
+        "sent_at": {
+          "description": "ISO-8601 with a time zone, e.g. 2026-11-02T08:00:00Z",
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        },
+        "side": {
+          "anyOf": [
+            {
+              "enum": [
+                "long",
+                "short"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Side"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "one of notional_usd, equity_pct, risk_pct, qty (open, flip); close_pct (reduce)",
+          "title": "Size"
+        },
+        "source": {
+          "description": "the registered source sending this",
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "stop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Stop"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "symbol": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "e.g. BTC/USDT:USDT (aliases: BTCUSDT, BTCUSDT.P, BYBIT:BTCUSDT.P)",
+          "title": "Symbol"
+        },
+        "take_profit": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/TakeProfitLevel"
+              },
+              "type": "array"
+            },
+            {
+              "const": false,
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "a take-profit ladder; false = none (not the deployment's)",
+          "title": "Take Profit"
+        },
+        "trailing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Trailing"
+            },
+            {
+              "const": false,
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trailing"
+        },
+        "ttl_s": {
+          "default": 60,
+          "description": "refused as stale after sent_at + ttl_s seconds",
+          "exclusiveMinimum": 0,
+          "title": "Ttl S",
+          "type": "number"
+        },
+        "version": {
+          "const": "1",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "id",
+        "source",
+        "deployment",
+        "sent_at",
+        "kind",
+        "action"
+      ],
+      "title": "EventSignal",
+      "type": "object"
+    },
+    "Execution": {
+      "additionalProperties": false,
+      "description": "How the order is executed. market: at once. limit: resting at `price`. maker_chase: post-only,\nfollowing the best price for up to `window_s` seconds.",
+      "properties": {
+        "price": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price"
+        },
+        "type": {
+          "enum": [
+            "market",
+            "limit",
+            "maker_chase"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "window_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Window S"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Execution",
+      "type": "object"
+    },
+    "Stop": {
+      "additionalProperties": false,
+      "description": "The stop: a price, or a % from the entry price (on the loss side).",
+      "properties": {
+        "pct": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 100,
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pct"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price"
+        }
+      },
+      "title": "Stop",
+      "type": "object"
+    },
+    "TakeProfitLevel": {
+      "additionalProperties": false,
+      "description": "One take-profit level: at `price` (or `pct` % from entry) close `close_pct` % of the position.",
+      "properties": {
+        "close_pct": {
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "title": "Close Pct",
+          "type": "number"
+        },
+        "pct": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pct"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price"
+        }
+      },
+      "required": [
+        "close_pct"
+      ],
+      "title": "TakeProfitLevel",
+      "type": "object"
+    },
+    "TargetSignal": {
+      "additionalProperties": false,
+      "properties": {
+        "deployment": {
+          "description": "the deployment this signal targets",
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Deployment",
+          "type": "string"
+        },
+        "dry_run": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "true = simulate this signal (only ever more cautious)",
+          "title": "Dry Run"
+        },
+        "execution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Execution"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gross_leverage": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gross Leverage"
+        },
+        "id": {
+          "description": "sender-unique; a repeat is never executed twice",
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "target",
+          "title": "Kind",
+          "type": "string"
+        },
+        "sent_at": {
+          "description": "ISO-8601 with a time zone, e.g. 2026-11-02T08:00:00Z",
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        },
+        "source": {
+          "description": "the registered source sending this",
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "stop_pct": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 100,
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Pct"
+        },
+        "ttl_s": {
+          "default": 60,
+          "description": "refused as stale after sent_at + ttl_s seconds",
+          "exclusiveMinimum": 0,
+          "title": "Ttl S",
+          "type": "number"
+        },
+        "version": {
+          "const": "1",
+          "title": "Version",
+          "type": "string"
+        },
+        "weights": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "signed fractions of deployment equity; symbols left out go to zero",
+          "title": "Weights",
+          "type": "object"
+        }
+      },
+      "required": [
+        "version",
+        "id",
+        "source",
+        "deployment",
+        "sent_at",
+        "kind",
+        "weights"
+      ],
+      "title": "TargetSignal",
+      "type": "object"
+    },
+    "Trailing": {
+      "additionalProperties": false,
+      "description": "A trailing stop: it follows the best price at distance_pct %, starting once the position is\nactivate_pct % in profit from entry (omitted: at once). It runs beside the fixed stop.",
+      "properties": {
+        "activate_pct": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Activate Pct"
+        },
+        "distance_pct": {
+          "exclusiveMaximum": 100,
+          "exclusiveMinimum": 0,
+          "title": "Distance Pct",
+          "type": "number"
+        }
+      },
+      "required": [
+        "distance_pct"
+      ],
+      "title": "Trailing",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "event": "#/$defs/EventSignal",
+      "target": "#/$defs/TargetSignal"
+    },
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/EventSignal"
+    },
+    {
+      "$ref": "#/$defs/TargetSignal"
+    }
+  ],
+  "title": "Quanti Relay signal v1"
+}

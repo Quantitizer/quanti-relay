@@ -1,0 +1,15 @@
+.git
+.venv
+_import
+.hygiene-denylist.local
+.env
+.env.*
+config
+data
+*.db
+*.db-*
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.claude
+tests
