@@ -3,6 +3,7 @@ address allowlist, the body limit, health that notices a stuck relay, the heartb
 database copy before an upgrade."""
 import asyncio
 import sqlite3
+import time
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -13,6 +14,7 @@ from starlette.datastructures import Headers
 from relay.api.app import create_app
 from relay.api.guard import TRACKED_MAX, Guard, GuardConfigError
 from relay.db import backup as backup_mod
+from relay.execution.engine import LOOP_STUCK_GRACE_S
 from relay.runtime import Runtime
 from tests.test_api import KEY, READ, _cfg
 from tests.test_engine import FakeBybit, _no_sleep, _real_sleep  # noqa: F401  (autouse fixture)
@@ -334,7 +336,8 @@ async def test_the_heartbeat_calls_while_healthy_and_stops_when_stuck(db, monkey
         assert calls and calls[0] == "https://monitor.example/ping/abc"
         while rt.engine._beats["stop_rules"][1] == 0:       # its first round, which would beat again
             await _real_sleep(0.01)
-        rt.engine._beats["stop_rules"] = (0.0, 10.0)        # stuck
+        long_ago = time.monotonic() - 2 * 10.0 - LOOP_STUCK_GRACE_S - 1   # not 0.0: the clock counts from boot
+        rt.engine._beats["stop_rules"] = (long_ago, 10.0)   # stuck
         await _real_sleep(0.05)
         n = len(calls)
         await _real_sleep(0.05)

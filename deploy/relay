@@ -12,15 +12,15 @@ set -euo pipefail
 [ -r /etc/default/quanti-relay ] && . /etc/default/quanti-relay
 DIR="${RELAY_DIR:-/opt/quanti-relay}"
 cd "$DIR"
-compose() { docker compose --profile tls "$@"; }
+COMPOSE=(docker compose --profile tls)   # a list, not a function: exec starts programs only
 
 case "${1:-help}" in
   secret) shift; exec python3 -I "$DIR/relay/envfile.py" --env-file "$DIR/.env" "$@" ;;
   # A restart alone keeps the old environment: the container is made again so it reads .env.
-  restart) exec compose up -d --force-recreate relay ;;
+  restart) exec "${COMPOSE[@]}" up -d --force-recreate relay ;;
   update) shift; exec "$DIR/deploy/update.sh" "$@" ;;
-  logs) exec compose logs --tail=200 -f relay ;;
-  status) exec compose ps ;;
+  logs) exec "${COMPOSE[@]}" logs --tail=200 -f relay ;;
+  status) exec "${COMPOSE[@]}" ps ;;
   help|-h|--help) sed -n '2,11p' "$0" ;;
-  *) exec compose exec -T relay relay "$@" ;;
+  *) exec "${COMPOSE[@]}" exec -T relay relay "$@" ;;
 esac

@@ -150,6 +150,23 @@ def test_user_data_and_the_wrapper_are_shell_that_parses():
     assert 'VERSION="<VERSION>"' in user_data           # the owner picks the release
 
 
+@pytest.mark.parametrize(("args", "docker"), [
+    (["doctor", "--json"], "compose --profile tls exec -T relay relay doctor --json"),
+    (["setup", "show"], "compose --profile tls exec -T relay relay setup show"),
+    (["restart"], "compose --profile tls up -d --force-recreate relay"),
+    (["logs"], "compose --profile tls logs --tail=200 -f relay"),
+    (["status"], "compose --profile tls ps"),
+])
+def test_the_relay_command_reaches_docker_compose(box, args, docker):
+    """Run, not only parsed: v0.1.0 had `exec compose` on a shell function, which bash cannot exec."""
+    repo, bin_dir, tmp = box
+    e = {"PATH": f"{bin_dir}:{os.environ['PATH']}", "LOG": str(tmp / "log"), "RELAY_DIR": str(repo)}
+    r = subprocess.run(["bash", str(repo / "deploy" / "relay"), *args], env=e, capture_output=True, check=False,
+                       text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert (tmp / "log").read_text().splitlines() == [f"docker {docker}"]
+
+
 def test_the_tls_proxy_trusts_the_network_the_relay_trusts():
     import yaml
     compose = yaml.safe_load((ROOT / "compose.yaml").read_text())
