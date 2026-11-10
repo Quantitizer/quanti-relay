@@ -2,7 +2,10 @@
 and relay setup."""
 import json
 import os
+import pty
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -207,17 +210,64 @@ def test_generate_writes_a_long_value_unseen_and_never_replaces_one(tmp_path, ca
     assert envfile.get(f, "RELAY_API_KEY") == value
 
 
-def test_without_a_terminal_set_and_reveal_refuse(tmp_path, monkeypatch, capsys):
+ENVFILE = Path(envfile.__file__)
+
+
+def test_without_a_terminal_set_and_reveal_refuse(tmp_path):
+    """A process with no terminal at all (an agent's command), not a stand-in for one."""
     f = tmp_path / ".env"
     f.write_text("RELAY_API_KEY='abc'\n")
+    for action in ("set", "reveal"):
+        r = subprocess.run([sys.executable, "-I", str(ENVFILE), "--env-file", str(f), action, "RELAY_API_KEY"],
+                           capture_output=True, text=True, stdin=subprocess.DEVNULL, start_new_session=True,
+                           timeout=30, check=False)
+        assert r.returncode == 2 and "person at a terminal" in r.stderr and "abc" not in r.stdout + r.stderr
+    assert envfile.get(f, "RELAY_API_KEY") == "abc"
 
-    def no_tty(*a, **k):
-        raise OSError("no tty")
-    monkeypatch.setattr("builtins.open", no_tty)
-    assert envfile.main(["--env-file", str(f), "set", "RELAY_API_KEY"]) == 2
-    assert envfile.main(["--env-file", str(f), "reveal", "RELAY_API_KEY"]) == 2
-    out = capsys.readouterr()
-    assert "person at a terminal" in out.err and "abc" not in out.out + out.err
+
+def _at_a_terminal(f, action, typed=b""):
+    """Runs `relay secret <action>` with a real (pseudo) terminal, as an SSH session or a provider's
+    console gives it; what is typed goes to the terminal. Returns the exit code and the screen."""
+    pid, fd = pty.fork()
+    if pid == 0:                                                        # the child: the terminal is its own
+        os.execv(sys.executable, [sys.executable, "-I", str(ENVFILE), "--env-file", str(f), action,
+                                  "RELAY_API_KEY"])
+    screen = b""
+    try:
+        if typed:
+            while b"hidden" not in screen:                              # wait for the prompt, then type
+                try:
+                    chunk = os.read(fd, 1024)
+                except OSError:
+                    chunk = b""
+                if not chunk:                                           # it ended without asking
+                    break
+                screen += chunk
+            else:
+                os.write(fd, typed)
+        while True:
+            try:
+                chunk = os.read(fd, 1024)
+            except OSError:                                             # the child closed the terminal
+                break
+            if not chunk:
+                break
+            screen += chunk
+    finally:
+        _, status = os.waitpid(pid, 0)
+        os.close(fd)
+    return os.waitstatus_to_exitcode(status), screen.decode()
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs a pseudo-terminal")
+def test_at_a_real_terminal_set_and_reveal_work(tmp_path):
+    f = tmp_path / ".env"
+    code, screen = _at_a_terminal(f, "set", b"s3cr3t-typed-value\n")
+    assert code == 0, screen
+    assert envfile.get(f, "RELAY_API_KEY") == "s3cr3t-typed-value"
+    assert "s3cr3t" not in screen                                       # typing is hidden
+    code, screen = _at_a_terminal(f, "reveal")
+    assert code == 0 and "s3cr3t-typed-value" in screen, screen
 
 
 def test_reveal_writes_to_the_terminal_not_to_the_output(tmp_path, monkeypatch, capsys):
@@ -268,7 +318,7 @@ def test_the_secrets_file_runs_with_the_standard_library_alone():
     src = Path(envfile.__file__).read_text()
     imports = {line.split()[1].split(".")[0] for line in src.splitlines()
                if line.startswith(("import ", "from ")) and not line.startswith("from __future__")}
-    assert imports <= {"argparse", "os", "re", "secrets", "sys", "tempfile", "pathlib", "termios"}
+    assert imports <= {"argparse", "io", "os", "re", "secrets", "sys", "tempfile", "pathlib", "termios"}
 
 
 # ---- relay doctor -------------------------------------------------------------------------------
@@ -478,3 +528,11 @@ def test_a_repeated_console_write_keeps_no_extra_history(tmp_path):
     setup.write_config(tmp_path, "deployment", "main", data)
     assert not (tmp_path / ".history").exists()
     assert os.access(tmp_path / "deployments" / "main.yaml", os.R_OK)
+
+
+def test_the_relay_reports_the_version_it_is_released_as():
+    import tomllib
+
+    import relay
+    pyproject = tomllib.loads((Path(__file__).resolve().parent.parent / "pyproject.toml").read_text())
+    assert relay.__version__ == pyproject["project"]["version"]

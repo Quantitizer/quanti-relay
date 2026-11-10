@@ -1,6 +1,6 @@
 [project]
 name = "quanti-relay"
-version = "0.0.1"
+version = "0.1.2"
 description = "Self-hosted signal-to-trade relay: JSON signals in, risk rails, exchange orders out."
 readme = "README.md"
 license = "Apache-2.0"

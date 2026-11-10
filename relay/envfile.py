@@ -19,6 +19,7 @@ written in one step, readable by its owner only (0600), and every other line is 
 from __future__ import annotations
 
 import argparse
+import io
 import os
 import re
 import secrets
@@ -110,10 +111,13 @@ def _write(path: Path, text: str) -> None:
 def _tty():
     """The terminal itself (not the command's input or output), or EnvFileError."""
     try:
-        return open("/dev/tty", "r+")
+        # Unbuffered, as getpass does it: open(..., "r+") wants a file it can seek in, which a
+        # terminal never is, so it failed on every terminal.
+        fd = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)
     except OSError:
         raise EnvFileError("this needs a person at a terminal: run it in your own terminal (or your cloud "
                            "provider's browser console), not through an agent") from None
+    return io.TextIOWrapper(io.FileIO(fd, "w+"), write_through=True)
 
 
 def ask_hidden(prompt: str) -> str:
